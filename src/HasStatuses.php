@@ -6,6 +6,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\ModelStatus\Events\StatusUpdated;
+use Spatie\ModelStatus\Exceptions\InvalidSetting;
 use Spatie\ModelStatus\Exceptions\InvalidStatus;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -22,6 +23,13 @@ trait HasStatuses
     public function status(string $name): ?Status
     {
         return $this->latestStatus($name);
+    }
+
+
+    public function setStatuses(array $statuses){
+        foreach ($statuses as $key => $value){
+            $this->setStatus($key,$value);
+        }
     }
 
     public function setStatus(string $name, ?string $value = null): self
