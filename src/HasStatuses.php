@@ -26,6 +26,29 @@ trait HasStatuses
     }
 
 
+    public function scopeCurrentStatus(Builder $builder, $name, array $values)
+    {
+        $builder
+            ->whereHas(
+                'statuses',
+                function (Builder $query) use ($name, $values) {
+                    $query
+                        ->where('name', $name)
+                        ->whereIn('value', $values)
+                        ->whereIn(
+                            'id',
+                            function (QueryBuilder $query) {
+                                $query
+                                    ->select(DB::raw('id'))
+                                    ->from($this->getStatusTableName())
+                                    ->where('model_type', $this->getStatusModelType())
+                                    ->whereColumn($this->getModelKeyColumnName(), $this->getQualifiedKeyName());
+                            }
+                        );
+                }
+            );
+    }
+
     public function setStatuses(array $statuses){
         foreach ($statuses as $key => $value){
             $this->setStatus($key,$value);
