@@ -16,110 +16,41 @@ trait HasStatuses
     public function statuses(): MorphMany
     {
         return $this->morphMany($this->getStatusModelClassName(), 'model', 'model_type', $this->getModelKeyColumnName())
-                    ->latest('id');
+            ->latest('id');
     }
 
-    public function status(): ?Status
+    public function status(string $name): ?Status
     {
-        return $this->latestStatus();
+        return $this->latestStatus($name);
     }
 
-    public function setStatus(string $name, ?string $reason = null): self
+    public function setStatus(string $name, ?string $value = null): self
     {
-        if (! $this->isValidStatus($name, $reason)) {
+        if (! $this->isValidStatus($name, $value)) {
             throw InvalidStatus::create($name);
         }
 
-        return $this->forceSetStatus($name, $reason);
+        return $this->forceSetStatus($name, $value);
     }
 
-    public function isValidStatus(string $name, ?string $reason = null): bool
+    public function isValidStatus(string $name, ?string $value = null): bool
     {
         return true;
     }
 
-    /**
-     * @param string|array $names
-     *
-     * @return null|Status
-     */
-    public function latestStatus(...$names): ?Status
+    public function latestStatus(string $name): ?Status
     {
-        $names = is_array($names) ? Arr::flatten($names) : func_get_args();
-
-        $statuses = $this->relationLoaded('statuses') ? $this->statuses : $this->statuses();
-
-        if (count($names) < 1) {
-            return $statuses->first();
-        }
-
-        return $statuses->whereIn('name', $names)->first();
+        return $this->statuses()->where('name', $name)->first();
     }
 
-    public function scopeCurrentStatus(Builder $builder, ...$names)
+    public function forceSetStatus(string $name, ?string $value = null): self
     {
-        $names = is_array($names) ? Arr::flatten($names) : func_get_args();
-        $builder
-            ->whereHas(
-                'statuses',
-                function (Builder $query) use ($names) {
-                    $query
-                        ->whereIn('name', $names)
-                        ->whereIn(
-                            'id',
-                            function (QueryBuilder $query) {
-                                $query
-                                    ->select(DB::raw('max(id)'))
-                                    ->from($this->getStatusTableName())
-                                    ->where('model_type', $this->getStatusModelType())
-                                    ->whereColumn($this->getModelKeyColumnName(), $this->getQualifiedKeyName());
-                            }
-                        );
-                }
-            );
-    }
+        $oldStatus = $this->latestStatus($name);
 
-    /**
-     * @param string|array $names
-     *
-     * @return void
-     **/
-    public function scopeOtherCurrentStatus(Builder $builder, ...$names)
-    {
-        $names = is_array($names) ? Arr::flatten($names) : func_get_args();
-        $builder
-            ->whereHas(
-                'statuses',
-                function (Builder $query) use ($names) {
-                    $query
-                        ->whereNotIn('name', $names)
-                        ->whereIn(
-                            'id',
-                            function (QueryBuilder $query) use ($names) {
-                                $query
-                                    ->select(DB::raw('max(id)'))
-                                    ->from($this->getStatusTableName())
-                                    ->where('model_type', $this->getStatusModelType())
-                                    ->whereColumn($this->getModelKeyColumnName(), $this->getQualifiedKeyName());
-                            }
-                        );
-                }
-            )
-            ->orWhereDoesntHave('statuses');
-    }
-
-    public function getStatusAttribute(): string
-    {
-        return (string) $this->latestStatus();
-    }
-
-    public function forceSetStatus(string $name, ?string $reason = null): self
-    {
-        $oldStatus = $this->latestStatus();
-
-        $newStatus = $this->statuses()->create([
+        $newStatus = $this->statuses()->updateOrCreate([
             'name'   => $name,
-            'reason' => $reason,
+        ],[
+            'value' => $value,
         ]);
 
         event(new StatusUpdated($oldStatus, $newStatus, $this));
