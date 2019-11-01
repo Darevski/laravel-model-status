@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-model-status` will be documented in this file
 
+## 1.9.0 - 2019-09-05
+
+- add possibility to delete a status and check for specific status
+
+## 1.8.0 - 2019-09-04
+
+- add support for Laravel 6
+
 ## 1.7.1 - 2019-06-11
 
 - performance improvements

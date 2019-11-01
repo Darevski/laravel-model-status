@@ -25,6 +25,22 @@ trait HasStatuses
         return $this->latestStatus($name);
     }
 
+    public function hasEverHadStatus($name): bool
+    {
+        $statuses = $this->relationLoaded('statuses') ? $this->statuses : $this->statuses();
+
+        return $statuses->where('name', $name)->count() > 0;
+    }
+
+    public function deleteStatus(...$names)
+    {
+        $names = is_array($names) ? Arr::flatten($names) : func_get_args();
+        if (count($names) < 1) {
+            return $this;
+        }
+
+        $this->statuses()->whereIn('name', $names)->delete();
+    }
 
     public function scopeCurrentStatus(Builder $builder, $name, array $values)
     {
@@ -69,9 +85,21 @@ trait HasStatuses
         return true;
     }
 
-    public function latestStatus(string $name): ?Status
+    /**
+     * @param string|array $names
+     *
+     * @return null|Status
+     */
+    public function latestStatus(...$names): ?Status
     {
-        return $this->statuses()->where('name', $name)->first();
+        $statuses = $this->relationLoaded('statuses') ? $this->statuses : $this->statuses();
+
+        $names = is_array($names) ? Arr::flatten($names) : func_get_args();
+        if (count($names) < 1) {
+            return $statuses->first();
+        }
+
+        return $statuses->whereIn('name', $names)->first();
     }
 
     public function forceSetStatus(string $name, ?string $value = null): self
